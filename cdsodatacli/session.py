@@ -17,15 +17,6 @@ MAX_SESSION_PER_ACCOUNT = 4  # each account CDSE have maximum 4 active sessions
 def get_list_active_session(conf, login_group=None):
     """
     Method to get the list of active session semaphore files.
-
-    Parameters
-    ----------
-    conf (dict) configuration dictionary of cdsodatacli package
-    login_group (str): e.g. logins or loginsbackfill (for instance, it depends on the localconfig.yml)
-
-    Returns
-    -------
-        consolidated_active_session_semaphore (list)
     """
     lst_sessions = glob.glob(
         os.path.join(conf["active_session_directory"], "CDSE_active_session_*.txt")
@@ -45,18 +36,7 @@ def get_list_active_session(conf, login_group=None):
 
 def get_a_free_account(counts, blacklist=None):
     """
-    Method to get a free (i.e. account for which at least one the 4 active session it not used) CDSE account for downloading.
-
-    Parameters
-    ----------
-    counts (collections.defaultdict(int)) counter of active session for each CDSE account
-    blacklist (list): list of account not usable [default=None]
-
-    Returns
-    -------
-        candidate (str): email address of the CDSE account free to use
-        counts (collections.defaultdict(int)): updated counter of active session for each CDSE account
-
+    Method to get a free CDSE account for downloading.
     """
     candidate = None
     if blacklist is None:
@@ -66,7 +46,7 @@ def get_a_free_account(counts, blacklist=None):
         if counts[acc] < MAX_SESSION_PER_ACCOUNT and acc not in blacklist:
             all_free_accounts.append(acc)
         else:
-            logging.debug("account: %s is full", acc)
+            logging.debug("account: %s is full or blacklisted", acc)
     logging.debug("counts after attribution %s", counts)
     logging.debug("all_free_accounts %s", all_free_accounts)
     if len(all_free_accounts) > 0:
@@ -78,18 +58,6 @@ def get_a_free_account(counts, blacklist=None):
 
 
 def write_active_session_semphore_file(safename, login, session_dir):
-    """
-
-    Parameters
-    ----------
-    safename (str):
-    login (str) :email address of CDSE account
-    session_dir (str)
-
-    Returns
-    -------
-
-    """
     path_semphore_session = os.path.join(
         session_dir,
         "CDSE_active_session_%s_%s.txt" % (login, safename),
@@ -100,17 +68,6 @@ def write_active_session_semphore_file(safename, login, session_dir):
 
 
 def remove_semaphore_session_file(session_dir, safename=None, login=None):
-    """
-    this function is supposed to be used when a download is finished
-
-    session_dir (str):
-    safename (str): basename of the product
-    login (str): CDSE email account
-
-    Returns
-    -------
-
-    """
     if safename is None:
         safename_str = "*"
     else:
@@ -134,17 +91,7 @@ def get_sessions_download_available(
     conf, subset_to_treat, hideProgressBar=True, blacklist=None, logins_group="logins"
 ):
     """
-
-    Parameters
-    ----------
-    conf (dict) configuration dictionary of cdsodatacli package
-    subset_to_treat (pandas.DatFrame)
-    hideProgressBar (bool)
-    blacklist (list): list of account not usable [default=None]
-    logins_group (str): logins or loginsbackfill (for instance, it depends on the localconfig.yml)
-    Returns
-    -------
-
+    Returns dataframe of downloadable products with allocated sessions.
     """
     df_products_downloadable = pd.DataFrame()
     all_sessions = []
@@ -167,6 +114,7 @@ def get_sessions_download_available(
         account = os.path.basename(toto).split("_")[3]
         account_counter[account] += 1
     logging.debug("counts after tokens browsing %s", account_counter)
+    
     for ss in range(len(subset_to_treat)):
         safename_product = subset_to_treat["safe"].iloc[ss]
 
@@ -192,6 +140,7 @@ def get_sessions_download_available(
                     quiet=hideProgressBar,
                     specific_account=account_free,
                     account_group=logins_group,
+                    conf=conf, # 修复 Bug: 传递 conf
                 )
             else:  # select randomly one token among existing
                 path_semphore_token = random.choice(lst_usable_tokens)
