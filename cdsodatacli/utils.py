@@ -2,7 +2,7 @@ from yaml import load
 import logging
 import os
 import cdsodatacli
-from yaml import CLoader as Loader
+from yaml import Loader
 import datetime
 import pandas as pd
 import json
